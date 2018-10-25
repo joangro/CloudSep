@@ -13,4 +13,4 @@ Source Separation with Google Cloud.
 # Current State
 
 - Training works and outputs models
-- Data augmentation works 
+- Data augmentation on the works
