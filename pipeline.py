@@ -9,9 +9,30 @@ FILES_PER_BATCH=2
 SAMPLES_PER_FILE=5
 MAX_TIME_CONTEXT=30
 
+class DataAugmentation():
+    def __init__(self, status=True):
+        self.status = status
+
+    def swapChannels(self, inputs, targets):
+        print(np.array(targets).shape)
+        targets = np.array(targets)
+        for i in range(4):
+            if i == 0:
+                aux_tar = targets[:,:2,:,:]
+                swapped_tar = aux_tar[:,::-1,:,:]
+            else:
+                aux_tar = targets[:,i*2:i*2+2,:,:]
+                np.append(swapped_tar, aux_tar[:,::-1,:,:], axis=1)
+        return np.array(inputs)[:,::-1,:,:], swapped_tar
+
+    def muteRandomSource(self, inputs, targets):
+        pass
+
+    def createNewMix(self):
+        pass
 
 def dataGen():
-    
+    da = DataAugmentation(status=True)
     filenames = [x for x in os.listdir('stft/train/') if x.endswith('.hdf5') and not x.startswith('stats')]
     num_files = len(filenames)
     for i in range(NUM_EPOCH):
@@ -24,8 +45,15 @@ def dataGen():
             mix_stft = hdf5_file['mix_stft']
             for i in range(SAMPLES_PER_FILE):
                 rand_index = np.random.randint(0,mix_stft.shape[1]-MAX_TIME_CONTEXT)
-                targets.append(tar_stft[:,rand_index:rand_index+MAX_TIME_CONTEXT,:])
-                inputs.append(mix_stft[:,rand_index:rand_index+MAX_TIME_CONTEXT,:])
+                if random.random()<0.2:
+                    target_aux = tar_stft[:,rand_index:rand_index+MAX_TIME_CONTEXT,:]
+                    input_aux = mix_stft[:,rand_index:rand_index+MAX_TIME_CONTEXT,:]
+                    da_input, da_targets = da.swapChannels(input_aux, target_aux)
+                    targets.append(da_targets)
+                    inputs.append(da_inputs)
+                else:
+                    targets.append(tar_stft[:,rand_index:rand_index+MAX_TIME_CONTEXT,:])
+                    inputs.append(mix_stft[:,rand_index:rand_index+MAX_TIME_CONTEXT,:])
             hdf5_file.close()
             
         yield np.array(inputs), np.array(targets)
