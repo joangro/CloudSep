@@ -1,5 +1,5 @@
 from __future__ import print_function, division
-import time
+import datetime,time
 
 import numpy as np
 import torch
@@ -8,10 +8,13 @@ from torch.autograd import Variable
 
 import pipeline
 import config
+import utils
 
 
-NUM_EPOCH_TRAIN = 2000
+NUM_EPOCH_TRAIN = 10000
 MAX_TIME_CONTEXT = pipeline.MAX_TIME_CONTEXT
+
+SAVE_EVERY=10
 
 class AutoEncoder(nn.Module):
     def __init__(self):
@@ -100,10 +103,11 @@ class AutoEncoder(nn.Module):
         return output_final 
 
 def loss_calc(inputs, targets, loss_func, autoencoder):
+    eps = 1e-9
     targets = targets *np.linspace(1.0,0.5,513)
-    targets_cuda = Variable(torch.FloatTensor(targets))
-    inputs = Variable(torch.FloatTensor(inputs))
-    output = autoencoder(inputs)
+    targets_cuda = Variable(torch.FloatTensor(targets)).cuda() + eps
+    inputs = Variable(torch.FloatTensor(inputs)).cuda() + eps
+    output = autoencoder(inputs) + eps
 
     vocals = output[:,:2,:,:]
     drums = output[:,2:4,:,:]
@@ -148,12 +152,13 @@ def loss_calc(inputs, targets, loss_func, autoencoder):
 
 
 def trainNet():
-    autoencoder = AutoEncoder()
+    autoencoder = AutoEncoder().cuda()
     optimizer = torch.optim.Adadelta(autoencoder.parameters(), lr = 1, rho=0.95)
     loss_func = nn.MSELoss( size_average=False )
+
     for epoch in range(NUM_EPOCH_TRAIN):
         start_time = time.time()
-
+        count = 0
         generator = pipeline.dataGen()
         optimizer.zero_grad()
 
@@ -179,12 +184,21 @@ def trainNet():
             step_loss.backward()
 
             optimizer.step()
+            count += 1
+            utils.progress(count,pipeline.NUM_EPOCH, suffix = 'training done')
+        
+        if (epoch % SAVE_EVERY == 0):
+            now = datetime.datetime.now()
+            model_name = 'log/{}{}{}{}_{}.pt'.format(now.month, now.day, now.hour, now.minute, epoch) 
+            torch.save(autoencoder.state_dict(), model_name)
+            print('Model saved in {}'.format(model_name))
+
         train_loss = train_loss/(200*NUM_EPOCH_TRAIN*MAX_TIME_CONTEXT*513)
         train_loss_vocals = train_loss_vocals/(200*NUM_EPOCH_TRAIN*MAX_TIME_CONTEXT*513)
         train_loss_drums = train_loss_drums/(200*NUM_EPOCH_TRAIN*MAX_TIME_CONTEXT*513)
         train_loss_bass = train_loss_bass/(200*NUM_EPOCH_TRAIN*MAX_TIME_CONTEXT*513)
         duration = time.time()-start_time
-        print('Epoch number {} took {} seconds, epoch total loss:'.format(epoch, duration, train_loss))
+        print('\nEpoch number {} took {} seconds, epoch total loss: {}'.format(epoch, duration, train_loss))
         print('                                  epoch vocal loss: %.7f' % (train_loss_vocals))
         print('                                  epoch drums loss: %.7f' % (train_loss_drums))
         print('                                  epoch bass  loss: %.7f' % (train_loss_bass))
@@ -192,4 +206,6 @@ def trainNet():
 
 
 if __name__ == '__main__':
+    print('Training network')
     trainNet()
+    #print (torch.cuda.is_available())

@@ -4,7 +4,7 @@ import time
 import h5py
 import random
 
-NUM_EPOCH=500
+NUM_EPOCH=300
 FILES_PER_BATCH=2
 SAMPLES_PER_FILE=5
 MAX_TIME_CONTEXT=30

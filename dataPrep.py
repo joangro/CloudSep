@@ -13,7 +13,7 @@ from google.cloud.storage import Blob
 
 
 def prepData(filenames):
-    
+    print('Creating STFTs')    
     for fi in filenames:
         fi = fi.split('/')[-1]
         print('processing {}'.format(fi))
@@ -47,6 +47,7 @@ def normalizeData():
         
         maximus = np.concatenate((maximus,loc_max),axis=1).max(axis=1).reshape(10,1,513)
         minimus = np.concatenate((minimus,loc_min),axis=1).min(axis=1).reshape(10,1,513)
+        hdf5_file.close()
 
     hdf5_file = h5py.File('stft/train/stats.hdf5', mode='w')
 
@@ -54,7 +55,7 @@ def normalizeData():
     hdf5_file.create_dataset("feats_minimus", [10,513], np.float32)   
     hdf5_file["feats_maximus"][:] = maximus.reshape(10,513)
     hdf5_file["feats_minimus"][:] = minimus.reshape(10,513)
-
+    hdf5_file.close()
 
 
 def listBucketFiles(bucket):
