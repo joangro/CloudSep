@@ -12,4 +12,5 @@ Source Separation with Google Cloud.
 
 # Current State
 
-- Training works and saves models
+- Training works and outputs models
+- Data augmentation works 
