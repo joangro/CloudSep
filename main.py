@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import datetime,time
+import argparse
 
 import numpy as np
 import torch
@@ -151,7 +152,7 @@ def loss_calc(inputs, targets, loss_func, autoencoder):
 
 
 
-def trainNet():
+def trainNet(file=None):
     autoencoder = AutoEncoder().cuda()
     optimizer = torch.optim.Adadelta(autoencoder.parameters(), lr = 1, rho=0.95)
     loss_func = nn.MSELoss( size_average=False )
@@ -189,7 +190,7 @@ def trainNet():
         
         if (epoch % SAVE_EVERY == 0):
             now = datetime.datetime.now()
-            model_name = 'log/{}{}{}{}_{}.pt'.format(now.month, now.day, now.hour, now.minute, epoch) 
+            model_name = config.log_dir+'{}{}{}{}_{}.pt'.format(now.month, now.day, now.hour, now.minute, epoch) 
             torch.save(autoencoder.state_dict(), model_name)
             print('Model saved in {}'.format(model_name))
 
@@ -206,6 +207,17 @@ def trainNet():
 
 
 if __name__ == '__main__':
-    print('Training network')
-    trainNet()
+    parser = argparse.ArgumentParser(description='Main CloudSep run file')
+    parser.add_argument('-t','--train', action='store_true',
+                        help='Indicate to start training network')
+    parser.add_argument('-f','--file', type=str,
+                        help='Optional: load a specific trained model into the network')
+    args = parser.parse_args()
+    if args.train:
+        print('Training network')
+        if args.file:
+            trainNet(file=args.file)
+        else:
+            trainNet()
+
     #print (torch.cuda.is_available())

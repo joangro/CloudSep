@@ -26,7 +26,7 @@ def prepData(filenames):
         hdf5_file["tar_stft"][:,:,:] = np.concatenate((voice, drums, bass, comp),axis = 0)
         hdf5_file.close()
 
-def normalizeData():
+def normalizeDataPrep():
     print('Normalizing data')
     maximus = np.zeros((10,1,513))
     minimus = np.zeros((10,1,513))
@@ -57,6 +57,33 @@ def normalizeData():
     hdf5_file["feats_minimus"][:] = minimus.reshape(10,513)
     hdf5_file.close()
 
+def normalizeData():
+
+    file_list = [x for x in os.listdir('stft/train/') if x.endswith('.hdf5') and not x.startswith('stats')]
+    
+    stat_file = h5py.File('stft/train/stats.hdf5', mode='r')
+    
+    max_feat = np.array(stat_file["feats_maximus"])
+    min_feat = np.array(stat_file["feats_minimus"])
+
+    max_feat_tars = max_feat[:8,:].reshape(1,8,1,513)
+    min_feat_tars = min_feat[:8,:].reshape(1,8,1,513)
+
+    max_feat_ins = max_feat[-2:,:].reshape(1,2,1,513)
+    min_feat_ins = min_feat[-2:,:].reshape(1,2,1,513)
+
+    for fi in file_list:
+        print('Normalizing file {}'.format(fi))
+        hdf5_file = h5py.File('stft/train/'+fi, "a")
+        tar_stft = hdf5_file["tar_stft"]
+        mix_stft = hdf5_file['mix_stft']
+
+        norm_tar = (np.array(tar_stft) - min_feat_tars)/(max_feat_tars - min_feat_tars)
+        norm_mix = (np.array(mix_stft) - min_feat_ins)/(max_feat_ins - min_feat_ins) 
+        hdf5_file["mix_stft"][:,:,:] = norm_mix
+        hdf5_file["tar_stft"][:,:,:] = norm_tar
+        hdf5_file.close()
+
 
 def listBucketFiles(bucket):
     
@@ -77,11 +104,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process dataset from bucket')
     parser.add_argument('-db','--database', type=str,
                         help='Optional: argument to indicate optional bucket name. Default: musdb')
-    parser.add_argument('-m','--maxmin', type=str,
+    parser.add_argument('-m','--maxmin', action="store_true",
                         help='Optional: Compute max and mins across dataset')
+    parser.add_argument('-n', '--normalize', action="store_true",
+                        help='Optional: normalize dataset')
     args = parser.parse_args()
-    if args.maxmin:
-        normalizeData()
+    
     if args.database:
         bucket_name = args.database
     else:
@@ -92,6 +120,11 @@ if __name__ == '__main__':
         bucket = client.get_bucket(bucket_name)   
     except:
         print('Can\'t find/access bucket')
-
-    file_list = listBucketFiles(bucket)
-    prepData(file_list)
+    
+    if args.maxmin:
+        normalizeDataPrep()
+    elif args.normalize:
+        normalizeData()
+    else:
+        file_list = listBucketFiles(bucket)
+        prepData(file_list)
