@@ -9,13 +9,10 @@ FILES_PER_BATCH=2
 SAMPLES_PER_FILE=5
 MAX_TIME_CONTEXT=30
 
-def classDecorator(func):
-    def wrapper(*args, **argv):
-
 class DataAugmentation():
     def __init__(self, status=True):
         self.status = status
-
+   
     def swapChannels(self, inputs, targets):
         targets = np.array(targets)
         for i in range(4):
@@ -29,8 +26,6 @@ class DataAugmentation():
 
     def muteRandomSource(self, inputs, targets):
         rand_source =  random.randint(0,4)
-
-
 
     def createNewMix(self):
         pass

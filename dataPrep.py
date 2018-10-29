@@ -89,7 +89,8 @@ def listBucketFiles(bucket):
     
     file_list = bucket.list_blobs()
     filenames = [ str(fi).split(',')[1][:-1] for fi in file_list if str(fi).split(',')[1].endswith('.stem.mp4>')]
-    
+    if args.list:
+        print(filenames)
     return filenames
 
 def saveData(file_list):
@@ -100,6 +101,13 @@ def saveData(file_list):
         with open('data/train/' + name,'wb') as file_obj:
             blob.download_to_file(file_obj)
 
+def uploadData(origin_filedir):
+    filenames = [fi for fi in os.listdir(origin_filedir)]
+    for fi in filenames:
+        print('Uploading {} to bucket'.format(fi))
+        blob = Blob('stft/'+fi, bucket)
+        blob.upload_from_filename(origin_filedir+fi)
+    
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser(description='Process dataset from bucket')
     parser.add_argument('-db','--database', type=str,
@@ -108,6 +116,12 @@ if __name__ == '__main__':
                         help='Optional: Compute max and mins across dataset')
     parser.add_argument('-n', '--normalize', action="store_true",
                         help='Optional: normalize dataset')
+    parser.add_argument('-l','--list', action='store_true',
+                        help='Optional: list files in bucket')
+    parser.add_argument('-p','--prep', action='store_true',
+                        help='Optional: start creating STFT\'s from data')
+    parser.add_argument('-u','--upload', type=str,
+                        help='Optional: upload files from indicated directory to bucket')
     args = parser.parse_args()
     
     if args.database:
@@ -125,6 +139,9 @@ if __name__ == '__main__':
         normalizeDataPrep()
     elif args.normalize:
         normalizeData()
-    else:
+    elif args.list:
         file_list = listBucketFiles(bucket)
+    elif args.prep:
         prepData(file_list)
+    elif args.upload:
+        uploadData(args.upload)
